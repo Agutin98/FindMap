@@ -37,6 +37,7 @@ module.exports = (helper) => {
 
         model
           .find(params.query || {}, params.projection || [])
+          .lean()
           .select(params.select || {})
           .populate(params.populates || [])
           .sort(params.sort || {})
@@ -55,13 +56,15 @@ module.exports = (helper) => {
             result.data.forEach(service => {
               if (service.lendings){
                 service.lendings.forEach(lending => {
+                  
+                    let lendingCoordinates = lending.address.location.coordinates;
+                    let lendingPoint = { latitude: lendingCoordinates[0], longitude: lendingCoordinates[1] };
+                    let distanceToUser = helper.lib.geolib.getDistance(coordinates, lendingPoint, 1);
+                    lending['distanceToUser'] = Math.floor(distanceToUser / 1000);
 
-                  let lendingCoordinates = lending.address.location.coordinates;
-                  let lendingPoint = {latitude: lendingCoordinates[0], longitude: lendingCoordinates[1]};
-
-                  if (!helper.lib.geolib.isPointWithinRadius(lendingPoint, coordinates, maxDistance * 1000)){
-                    service.lendings = service.lendings.filter(lend => lend == lending);
-                  }
+                    if (!helper.lib.geolib.isPointWithinRadius(lendingPoint, coordinates, maxDistance)){
+                      service.lendings = service.lendings.filter(lend => lend == lending);
+                    } 
                 });
               };
             });
